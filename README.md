@@ -1,251 +1,204 @@
-```markdown
-# TrainerLights
+﻿# TrainerLights
 
 **A WiFi-based reflex training system for athletes**  
-Measure and improve reaction time with wireless sensor nodes.
+Measure and improve reaction time using wireless sensor nodes.
+
+##  Table of Contents
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Hardware Requirements](#hardware-requirements)
+4. [Software Requirements](#software-requirements)
+5. [Wiring Diagrams](#wiring-diagrams)
+6. [Getting Started](#getting-started)
+7. [Using the Web Interface](#using-the-web-interface)
+8. [Client Button Functions](#client-button-functions)
+9. [Configuration Storage](#configuration-storage)
+10. [Statistics Explained](#statistics-explained)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
-## 📖 Overview
+##  Overview
 
-TrainerLights is an open-source, low-cost training tool that helps athletes enhance their reflexes. The system consists of one **server** (ESP8266) that creates a WiFi access point and multiple **client lights** (ESP8266 + ultrasonic sensor) that athletes interact with. When a client light turns on, the athlete must move into its detection zone as quickly as possible. The system measures reaction time (ms) and distance (cm), and sends real‑time statistics to a coach’s phone via a built‑in web interface.
+TrainerLights is an open-source, low-cost reflex training system. One **server** (ESP8266) creates a WiFi access point and multiple **client lights** (ESP8266 + HC-SR04 sensor) connect to it.
 
-No smartphone app is required – just a browser.
-
----
-
-## ✨ Features
-
-- **Wireless control** – server acts as WiFi access point (`TrainerLights`).
-- **Web interface** – accessible from any device with a browser (mobile friendly).
-- **Real‑time statistics** – score, errors, average/min/max reaction times and distances.
-- **Configurable parameters** – delay before stimulus, timeout, detection range, random/sequential mode.
-- **Multiple sensor nodes** – up to 32 clients can connect simultaneously.
-- **Sensor health management** – timeouts are tracked; a sensor is removed only after 5 consecutive failures.
-- **Persistent configuration** – settings saved in EEPROM (survives power cycle).
-- **On‑board button** on each client with three functions (short/medium/long press).
-- **Moving average + hysteresis** on distance readings to prevent false triggers.
+When the active client turns on, the athlete moves into its detection zone. The system measures reaction time and distance, updates stats in real time, and exposes a coach-facing web interface.
 
 ---
 
-## 🧰 Hardware Requirements
+##  Features
 
-### Server (one unit)
-- NodeMCU ESP8266 (or any ESP8266 board)
-- Micro‑USB cable
-- (Optional) built‑in LED for status
+- Server-based WiFi network (TrainerLights) to coordinate clients
+- Mobile-friendly web dashboard with real-time stats
+- Reaction/distance tracking (avg/min/max)
+- Configurable delays, timeouts, distance ranges
+- Random or sequential stimulus modes
+- Up to 32 client nodes
+- Sensor health tracking with timeout and disconnect logic
+- EEPROM-based persistent settings
+- Local button controls on each client (short/medium/long press)
+- Distance hysteresis and moving average for stable detection
 
-### Each Client (up to 32)
+---
+
+##  Hardware Requirements
+
+### Server (1x ESP8266)
+- NodeMCU ESP8266 (or equivalent)
+- USB power cable
+- Optional status LED (built-in D4)
+
+### Client (up to 32)
 - NodeMCU ESP8266
-- HC‑SR04 Ultrasonic Sensor
-- 3× LEDs (stimulus, success, error) + appropriate resistors (220–330Ω)
-- 1× Tactile push button (pull‑up, connects to GND when pressed)
+- HC-SR04 ultrasonic sensor
+- 3 LEDs (stimulus, success, error) + 220330Ω resistors
+- 1 tactile push button (GND pull-up)
 - Jumper wires
-- Breadboard or PCB for assembly
+- Breadboard/PCB
 
-> **Note:** Pin assignments are defined in the code – double‑check before wiring.
+> Pin mappings are in code, verify before wiring.
 
 ---
 
-## 📦 Software Requirements
+##  Software Requirements
 
 ### Arduino IDE / PlatformIO
-Install the following libraries via Arduino Library Manager:
+Install these libraries:
+- ESP8266WiFi (built-in)
+- WebSockets by Markus Sattler
+- ArduinoJson (v6)
+- TaskScheduler by Anatoli Arkhipenko
+- LinkedList by Ivan Seidel
+- EEPROM (built-in)
 
-- `ESP8266WiFi` (built‑in with ESP8266 board package)
-- `WebSockets` by Markus Sattler
-- `ArduinoJson` (version 6)
-- `TaskScheduler` by Anatoli Arkhipenko
-- `LinkedList` by Ivan Seidel
-- `EEPROM` (built‑in)
-
-### ESP8266 Board Package
-In Arduino IDE:  
-`File` → `Preferences` → Additional Board Manager URLs:  
-`http://arduino.esp8266.com/stable/package_esp8266com_index.json`  
-Then `Tools` → `Board` → `Board Manager` → search `esp8266` and install.
+### ESP8266 board support
+1. Go to File  Preferences
+2. Add http://arduino.esp8266.com/stable/package_esp8266com_index.json
+3. Open Tools  Board  Board Manager, install esp8266
 
 ---
 
-## 🔧 Wiring Diagrams
+##  Wiring Diagrams
 
 ### Client Node (per light)
 
-| Component      | ESP8266 Pin |
-|----------------|-------------|
-| HC‑SR04 VCC    | 5V (or 3.3V) |
-| HC‑SR04 GND    | GND         |
-| HC‑SR04 TRIG   | D1          |
-| HC‑SR04 ECHO   | D2          |
-| Stimulus LED   | D6 (through resistor) |
-| Success LED    | D0 (through resistor) |
-| Error LED      | D7 (through resistor) |
-| Button (one side to GND) | D5 (INPUT_PULLUP) |
-| Built‑in LED   | D4 (on‑board) |
+| Component | ESP8266 Pin |
+|---|---|
+| HC-SR04 VCC | 5V or 3.3V |
+| HC-SR04 GND | GND |
+| HC-SR04 TRIG | D1 |
+| HC-SR04 ECHO | D2 |
+| Stimulus LED | D6 (resistor) |
+| Success LED | D0 (resistor) |
+| Error LED | D7 (resistor) |
+| Button (GND side) | D5 (INPUT_PULLUP) |
+| On-board LED | D4 |
 
-> Use current‑limiting resistors (220Ω) in series with each LED.
+> Use a current-limiting resistor (220Ω) for each LED.
 
 ### Server Node
-No external components required (only built‑in LED on D4 for status).  
-The server code does not use the ultrasonic sensor pins; they can be left unconnected.
+No external trigger sensor needed. Only built-in D4 LED status.
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### 1. Prepare the Server
-1. Open `TrainerLights_server.ino` in Arduino IDE.
-2. Select the correct board (`NodeMCU 1.0 (ESP-12E)`) and port.
-3. Upload the sketch to your server NodeMCU.
-4. Open Serial Monitor (115200 baud) to see the IP address (usually `192.168.4.1`).
+1. Open TrainerLights_server.ino
+2. Select NodeMCU 1.0 (ESP-12E) and correct COM port
+3. Upload sketch
+4. Open Serial Monitor at 115200 baud, note 192.168.4.1
 
-### 2. Prepare Each Client
-1. Open `TrainerLights_client.ino`.
-2. (Optional) Adjust pin definitions if your wiring differs.
-3. Upload the sketch to each client NodeMCU.
-4. Clients will automatically attempt to connect to the `TrainerLights` WiFi.
+### 2. Prepare Clients
+1. Open TrainerLights_client.ino
+2. Adjust pins if needed
+3. Upload to each client
+4. Each client connects to TrainerLights AP
 
 ### 3. Power Up
-- Power the server via USB.
-- Power each client (USB or battery). The built‑in LED on each client will blink while connecting, then stay solid when connected.
+- Power server and clients via USB (or battery for clients)
+- Client LED blink pattern indicates network connection
 
-### 4. Connect Your Phone/Tablet
-- Go to WiFi settings and connect to **`TrainerLights`** (password: `1234567890`).
-- Open a browser and navigate to **`http://192.168.4.1`** (or `http://trainerlights.local` if mDNS works).
-- The TrainerLights control panel will load.
-
----
-
-## 📱 Using the Web Interface
-
-### Main Sections
-- **Timer** – start/stop/reset the training session.
-- **Score & Errors** – successful hits vs. timeouts.
-- **Reaction Times** – average, minimum, maximum (ms).
-- **Distances** – average, minimum, maximum (cm).
-- **Training Modes** – choose `Random` or `Sequential`.
-- **Delay Range** – random wait before light turns on (ms).
-- **Timeout Range** – random time the light stays on (ms).
-- **Detection Range** – min/max distance (cm) for a valid hit.
-- **Configure** – send settings to the server (saved in EEPROM).
-- **List Sensors** – show all connected client lights.
-
-### Workflow
-1. Set your desired parameters.
-2. Click **Configure**.
-3. Click **Start** (timer begins, stimuli are sent).
-4. Athletes react when their light turns on.
-5. Watch statistics update in real time.
-6. Click **Stop** to end the session.
+### 4. Connect Controller Device
+1. Connect phone/tablet to TrainerLights (password 1234567890)
+2. Open browser: http://192.168.4.1 (or http://trainerlights.local)
+3. Use control panel to start the session
 
 ---
 
-## 🎮 Client Button Functions
+##  Using the Web Interface
 
-Each client board has a tactile button (connected to D5). Its behaviour depends on how long you press it:
+### Sections
+- Timer: start/stop/reset
+- Scores & errors
+- Reaction/distance stats
+- Mode: random/sequential
+- Delay/time-out/detection range
+- Configure button (EEPROM save)
+- List sensors
 
-| Press Duration | Function               | Visual Feedback                     | Use Case                         |
-|----------------|------------------------|-------------------------------------|----------------------------------|
-| **< 1 sec**    | Toggle status LED      | Built‑in LED on/off                 | Identify a specific light        |
-| **1–3 sec**    | Manual stimulus        | Stimulus LED turns on (default timeout) | Test light without server       |
-| **> 3 sec**    | Calibration            | Both red and green LEDs on (yellow) | Check sensor alignment           |
-
-During calibration, the sensor takes 10 readings and reports the average distance via Serial. If the average is >100 cm, a warning is shown (rapid red flashes).
-
----
-
-## ⚙️ Configuration Storage
-
-The server saves your settings to EEPROM. On next power‑up, it restores:
-- Mode (random/sequential)
-- Min/max delay
-- Min/max timeout
-- Min/max detection range
-
-No need to reconfigure every time!
+### Suggested Workflow
+1. Set parameters
+2. Configure
+3. Start
+4. Athlete reacts to active lights
+5. Monitor stats
+6. Stop
 
 ---
 
-## 📊 Statistics Explained
+##  Client Button Functions
 
-- **Score** – number of successful hits (object detected within range and before timeout).
-- **Errors** – timeouts (no detection) or false triggers (reaction < 50 ms).
-- **Reaction time** – time from LED turning on until detection.
-- **Distance** – measured distance when detection occurred.
+| Duration | Action | Feedback | Use Case |
+|---|---|---|---|
+| <1s | Toggle status LED | Built-in LED on/off | identify node |
+| 13s | Manual stimulus | Stimulus LED on | local test |
+| >3s | Calibration | red+green (yellow) | range calibration |
 
-All statistics are reset when you click **Start**.
+Calibration performs 10 readings and displays average distance; >100 cm triggers warning.
 
 ---
 
-## 🛠 Troubleshooting
+##  Configuration Storage
 
-### Clients don't connect to WiFi
-- Ensure the server is powered and the `TrainerLights` network is visible.
-- Check that the password is correct (`1234567890`).
-- Serial monitor on client shows connection attempts.
+Server EEPROM stores:
+- mode (random/sequential)
+- delay min/max
+- timeout min/max
+- detection range min/max
 
-### No web interface
-- Verify your phone is connected to the `TrainerLights` WiFi.
-- Try `http://192.168.4.1` (hard‑coded IP).
-- Check server Serial monitor for errors.
+Settings persist across reboots.
+
+---
+
+##  Statistics Explained
+
+- **Score**: successful hits
+- **Errors**: timeouts/false triggers
+- **Reaction time**: ms from LED on to detection
+- **Distance**: measured range at hit
+
+Stats reset on Start.
+
+---
+
+##  Troubleshooting
+
+### Clients won't connect
+- Server AP running and visible?
+- Correct password (1234567890)?
+- Check client serial logs
+
+### Web page not loading
+- Device on TrainerLights WiFi
+- Try http://192.168.4.1
+- Check server serial errors
 
 ### Sensors not detecting
-- Verify HC‑SR04 wiring (VCC to 5V, GND, TRIG/ECHO to correct pins).
-- Run calibration (long press) to see average distance.
-- Adjust detection range in the web interface.
+- Verify HC-SR04 wiring
+- Run calibration (long press)
+- Adjust detection range in UI
 
-### False triggers or missed hits
-- The code implements a moving average filter and requires two consecutive valid readings. This reduces noise but may slightly increase reaction time. Adjust in code if needed.
-
----
-
-## 📁 Repository Structure
-
-```
-TrainerLights/
-├── TrainerLights_server.ino      # Server code
-├── TrainerLights_client.ino      # Client code
-├── README.md                     # This file
-└── images/                       # (optional) wiring diagrams, screenshots
-```
-
----
-
-## 📚 Libraries Used
-
-| Library               | Author                 | Purpose                          |
-|-----------------------|------------------------|----------------------------------|
-| `ESP8266WiFi`         | ESP8266 Community      | WiFi connection                  |
-| `WebSockets`          | Markus Sattler         | WebSocket server/client          |
-| `ArduinoJson`         | Benoit Blanchon        | JSON parsing / generation        |
-| `TaskScheduler`       | Anatoli Arkhipenko     | Cooperative multitasking         |
-| `LinkedList`          | Ivan Seidel            | Dynamic list of sensors          |
-| `EEPROM`              | Arduino                | Persistent storage               |
-
-Install them via Arduino Library Manager (Sketch → Include Library → Manage Libraries...).
-
----
-
-## 👥 Credits
-
-**Author:** Ricardo Lerch ([@RickLerch](https://github.com/...))  
-**Contact:** ricardo.lerch@gmail.com  
-
-Special thanks to the open‑source community for the incredible libraries that made this project possible.
-
----
-
-## 📄 License
-
-This project is open source under the MIT License – feel free to use, modify, and distribute.
-
----
-
-## 🌟 Support & Contributions
-
-Found a bug? Want a new feature? Open an issue or submit a pull request. Feedback is always welcome!
-
----
-
-**Happy training!** 💪
-```
+### Erratic readings
+- Code uses moving-average + two-consecutive detections
+- Tune thresholds in code if needed
